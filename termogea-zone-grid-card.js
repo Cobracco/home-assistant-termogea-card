@@ -472,11 +472,6 @@ class TermogeaZoneGridCard extends HTMLElement {
           min-width: 0;
           width: 100%;
         }
-        @media (min-width: 760px) {
-          .grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-        }
         .zone {
           border: none;
           border-radius: 14px;
@@ -576,12 +571,14 @@ class TermogeaZoneGridCard extends HTMLElement {
           flex-wrap: nowrap;
         }
         .action {
+          -webkit-tap-highlight-color: transparent;
           border: 0;
           border-radius: 999px;
           cursor: pointer;
           font-size: 13px;
           font-weight: 700;
           padding: 6px 11px;
+          touch-action: manipulation;
         }
         .action.small {
           background: rgba(255, 255, 255, 0.95);
@@ -664,6 +661,10 @@ class TermogeaZoneGridCard extends HTMLElement {
       return;
     }
 
+    if (actionElement.hasAttribute("disabled")) {
+      return;
+    }
+
     if (action === "toggle") {
       const isOn = this._isOn(stateObj);
       const supportsOff = this._supportsHvacMode(stateObj, "off");
@@ -686,20 +687,26 @@ class TermogeaZoneGridCard extends HTMLElement {
         mode = firstSupported;
       }
 
-      this._hass.callService("climate", "set_hvac_mode", {
-        entity_id: entityId,
-        hvac_mode: mode,
-      });
-      this._schedulePostActionRefresh(this._entityIdsForCard());
+      Promise.resolve(
+        this._hass.callService("climate", "set_hvac_mode", {
+          entity_id: entityId,
+          hvac_mode: mode,
+        })
+      )
+        .then(() => this._schedulePostActionRefresh(this._entityIdsForCard()))
+        .catch((err) => console.error("Termogea toggle failed", err));
       return;
     }
 
     if (action === "global_power_toggle") {
       const turnOn = stateObj.state !== "on";
-      this._hass.callService("switch", turnOn ? "turn_on" : "turn_off", {
-        entity_id: entityId,
-      });
-      this._schedulePostActionRefresh(this._entityIdsForCard());
+      Promise.resolve(
+        this._hass.callService("switch", turnOn ? "turn_on" : "turn_off", {
+          entity_id: entityId,
+        })
+      )
+        .then(() => this._schedulePostActionRefresh(this._entityIdsForCard()))
+        .catch((err) => console.error("Termogea global power toggle failed", err));
       return;
     }
 
@@ -718,11 +725,14 @@ class TermogeaZoneGridCard extends HTMLElement {
       }
       const direction = action === "temp_up" ? 1 : -1;
       const next = Math.min(max, Math.max(min, current + direction * step));
-      this._hass.callService("climate", "set_temperature", {
-        entity_id: entityId,
-        temperature: Number(next.toFixed(1)),
-      });
-      this._schedulePostActionRefresh(this._entityIdsForCard());
+      Promise.resolve(
+        this._hass.callService("climate", "set_temperature", {
+          entity_id: entityId,
+          temperature: Number(next.toFixed(1)),
+        })
+      )
+        .then(() => this._schedulePostActionRefresh(this._entityIdsForCard()))
+        .catch((err) => console.error("Termogea set_temperature failed", err));
     }
   }
 }
