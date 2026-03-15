@@ -3,8 +3,23 @@ class TermogeaZoneGridCard extends HTMLElement {
     super();
     this._config = {};
     this._hass = null;
+    this._instanceId = Math.random().toString(36).slice(2);
+    this._refreshTimeouts = [];
+    this._refreshIntervalHandle = null;
+    this._onCrossCardRefresh = (event) => this._handleCrossCardRefresh(event);
     this.attachShadow({ mode: "open" });
     this.shadowRoot.addEventListener("click", (event) => this._onClick(event));
+  }
+
+  connectedCallback() {
+    window.addEventListener("termogea-zone-grid-refresh", this._onCrossCardRefresh);
+    this._startPeriodicRefresh();
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener("termogea-zone-grid-refresh", this._onCrossCardRefresh);
+    this._clearScheduledRefreshes();
+    this._stopPeriodicRefresh();
   }
 
   static getStubConfig() {
@@ -16,6 +31,7 @@ class TermogeaZoneGridCard extends HTMLElement {
       throw new Error("Invalid configuration");
     }
     this._config = config || {};
+    this._startPeriodicRefresh();
     this._render();
   }
 
@@ -119,6 +135,103 @@ class TermogeaZoneGridCard extends HTMLElement {
     this._hass.callService("homeassistant", "update_entity", {
       entity_id: entityIds,
     });
+  }
+
+  _entityIdsForCard() {
+    const climateIds = this._getEntities().map((entry) => entry.entity);
+    const zoneIds = new Set();
+    for (const entityId of climateIds) {
+      const attrs = this._hass?.states?.[entityId]?.attributes || {};
+      const zoneId = String(attrs.zone_id || "").trim();
+      if (zoneId) {
+        zoneIds.add(zoneId.toLowerCase());
+      }
+    }
+
+    const relatedSensorIds = [];
+    if (this._hass?.states) {
+      for (const [entityId, stateObj] of Object.entries(this._hass.states)) {
+        if (!entityId.startsWith("sensor.") && !entityId.startsWith("binary_sensor.")) {
+          continue;
+        }
+        const attrs = stateObj?.attributes || {};
+        const zoneId = String(attrs.zone_id || "").trim().toLowerCase();
+        if (zoneId && zoneIds.has(zoneId)) {
+          relatedSensorIds.push(entityId);
+        }
+      }
+    }
+
+    return Array.from(new Set([...climateIds, ...relatedSensorIds]));
+  }
+
+  _clearScheduledRefreshes() {
+    for (const handle of this._refreshTimeouts) {
+      clearTimeout(handle);
+    }
+    this._refreshTimeouts = [];
+  }
+
+  _startPeriodicRefresh() {
+    this._stopPeriodicRefresh();
+    const seconds = Number(this._config.refresh_interval_seconds ?? 20);
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+      return;
+    }
+    this._refreshIntervalHandle = window.setInterval(() => {
+      if (document.hidden) {
+        return;
+      }
+      const entities = this._entityIdsForCard();
+      this._requestEntityRefresh(entities);
+    }, Math.max(5, seconds) * 1000);
+  }
+
+  _stopPeriodicRefresh() {
+    if (this._refreshIntervalHandle !== null) {
+      clearInterval(this._refreshIntervalHandle);
+      this._refreshIntervalHandle = null;
+    }
+  }
+
+  _broadcastCrossCardRefresh(entityIds) {
+    window.dispatchEvent(
+      new CustomEvent("termogea-zone-grid-refresh", {
+        detail: {
+          source: this._instanceId,
+          entity_ids: entityIds,
+        },
+      })
+    );
+  }
+
+  _handleCrossCardRefresh(event) {
+    const detail = event?.detail || {};
+    if (detail.source === this._instanceId) {
+      return;
+    }
+    const entityIds = Array.isArray(detail.entity_ids) && detail.entity_ids.length > 0
+      ? detail.entity_ids
+      : this._entityIdsForCard();
+    this._requestEntityRefresh(entityIds);
+    this._render();
+  }
+
+  _schedulePostActionRefresh(entityIds) {
+    this._requestEntityRefresh(entityIds);
+    this._clearScheduledRefreshes();
+    const delays = [
+      Number(this._config.refresh_delay_ms ?? 1200),
+      Number(this._config.refresh_delay2_ms ?? 3500),
+    ].filter((value) => Number.isFinite(value) && value > 0);
+    for (const delay of delays) {
+      const handle = window.setTimeout(() => {
+        this._requestEntityRefresh(entityIds);
+        this._refreshTimeouts = this._refreshTimeouts.filter((item) => item !== handle);
+      }, delay);
+      this._refreshTimeouts.push(handle);
+    }
+    this._broadcastCrossCardRefresh(entityIds);
   }
 
   _toNumberOrNull(value) {
@@ -446,7 +559,7 @@ class TermogeaZoneGridCard extends HTMLElement {
         entity_id: entityId,
         hvac_mode: mode,
       });
-      this._requestEntityRefresh([entityId]);
+      this._schedulePostActionRefresh(this._entityIdsForCard());
       return;
     }
 
@@ -469,7 +582,7 @@ class TermogeaZoneGridCard extends HTMLElement {
         entity_id: entityId,
         temperature: Number(next.toFixed(1)),
       });
-      this._requestEntityRefresh([entityId]);
+      this._schedulePostActionRefresh(this._entityIdsForCard());
     }
   }
 }
