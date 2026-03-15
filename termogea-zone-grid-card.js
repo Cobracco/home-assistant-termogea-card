@@ -625,6 +625,7 @@ class TermogeaZoneGridCard extends HTMLElement {
 
 const TERMOGEA_CARD_TYPE = "termogea-zone-grid-card";
 const TERMOGEA_CARD_TYPE_V2 = "termogea-zone-grid-card-v2";
+const TERMOGEA_CARD_TYPE_V3 = "termogea-zone-grid-card-v3";
 
 const defineCard = (tag) => {
   if (!customElements.get(tag)) {
@@ -634,6 +635,7 @@ const defineCard = (tag) => {
 
 defineCard(TERMOGEA_CARD_TYPE);
 defineCard(TERMOGEA_CARD_TYPE_V2);
+defineCard(TERMOGEA_CARD_TYPE_V3);
 
 window.customCards = window.customCards || [];
 const registerCardMetadata = (type, name, description) => {
@@ -657,4 +659,9 @@ registerCardMetadata(
   TERMOGEA_CARD_TYPE_V2,
   "Termogea Zone Grid v2",
   "Versione aggiornata per bypass cache risorse e fix layout."
+);
+registerCardMetadata(
+  TERMOGEA_CARD_TYPE_V3,
+  "Termogea Zone Grid v3",
+  "Versione aggiornata per bypass cache aggressiva e risorse duplicate."
 );
