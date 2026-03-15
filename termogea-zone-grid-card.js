@@ -328,10 +328,16 @@ class TermogeaZoneGridCard extends HTMLElement {
             : zoneEnabled
               ? "policy-enabled"
               : "";
+          const presenceBadge = presenceDetected
+            ? `<span class="zone-badge presence" title="Presenza rilevata"><ha-icon icon="mdi:account"></ha-icon></span>`
+            : "";
 
           return `
             <div class="zone ${isOn ? "on" : "off"} ${policyClass} ${unavailable ? "unavailable" : ""}" data-action="more_info" data-entity="${entry.entity}" tabindex="0" role="button">
-              <div class="zone-name">${name}</div>
+              <div class="zone-head">
+                <div class="zone-name">${name}</div>
+                <div class="zone-badges">${presenceBadge}</div>
+              </div>
               <div class="zone-temp">${this._formatTemp(current)}<span class="unit">°C</span></div>
               <div class="zone-target">Target ${this._formatTemp(target)}°C${humidityPart}</div>
               <div class="zone-actions">
@@ -423,10 +429,40 @@ class TermogeaZoneGridCard extends HTMLElement {
           transform: translateY(-1px);
         }
         .zone-name {
+          flex: 1;
           font-size: 20px;
           font-weight: 500;
           line-height: 1.1;
+          min-width: 0;
           text-transform: uppercase;
+        }
+        .zone-head {
+          align-items: flex-start;
+          display: flex;
+          gap: 8px;
+          justify-content: space-between;
+          min-width: 0;
+        }
+        .zone-badges {
+          display: flex;
+          flex-shrink: 0;
+          gap: 6px;
+        }
+        .zone-badge {
+          align-items: center;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 999px;
+          color: rgba(255, 255, 255, 0.95);
+          display: inline-flex;
+          height: 30px;
+          justify-content: center;
+          width: 30px;
+        }
+        .zone-badge ha-icon {
+          --mdc-icon-size: 18px;
+        }
+        .zone-badge.presence {
+          background: rgba(255, 255, 255, 0.24);
         }
         .zone-temp {
           font-size: 52px;

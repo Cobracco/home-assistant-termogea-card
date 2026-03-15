@@ -60,4 +60,5 @@ entities:
 - Colore tile:
   - arancione base
   - verde quando la policy zona e abilitata e `presence_detected` e attivo
+- Quando `presence_detected` e attivo, compare una icona persona sulla card zona.
 - Il toggle ON/OFF usa solo modalita HVAC realmente supportate dalla zona.
