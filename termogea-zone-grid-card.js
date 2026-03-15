@@ -127,6 +127,37 @@ class TermogeaZoneGridCard extends HTMLElement {
     return null;
   }
 
+  _resolveActiveSeason() {
+    if (!this._hass?.states) {
+      return null;
+    }
+    const configured = this._config.active_season_entity;
+    if (typeof configured === "string" && configured && this._hass.states[configured]) {
+      const state = String(this._hass.states[configured]?.state || "").trim().toLowerCase();
+      return state || null;
+    }
+
+    const sensors = Object.keys(this._hass.states).filter((entityId) =>
+      entityId.startsWith("sensor.")
+    );
+    for (const entityId of sensors) {
+      const stateObj = this._hass.states[entityId];
+      const friendly = String(stateObj?.attributes?.friendly_name || "").toLowerCase();
+      if (friendly.includes("termogea") && friendly.includes("active season")) {
+        const state = String(stateObj?.state || "").trim().toLowerCase();
+        return state || null;
+      }
+    }
+    for (const entityId of sensors) {
+      const lowered = entityId.toLowerCase();
+      if (lowered.includes("termogea") && lowered.includes("active_season")) {
+        const state = String(this._hass.states[entityId]?.state || "").trim().toLowerCase();
+        return state || null;
+      }
+    }
+    return null;
+  }
+
   _nameFor(entry, stateObj) {
     if (entry.name) {
       return entry.name;
@@ -345,6 +376,7 @@ class TermogeaZoneGridCard extends HTMLElement {
       const globalPowerEntity = this._resolveGlobalPowerEntity();
       const globalPowerState = globalPowerEntity ? this._hass.states[globalPowerEntity] : null;
       const globalPowerOn = globalPowerState?.state === "on";
+      const activeSeason = this._resolveActiveSeason();
       const globalPowerButton = globalPowerEntity
         ? `<button class="global-power ${globalPowerOn ? "on" : "off"}"
               data-action="global_power_toggle"
@@ -375,19 +407,16 @@ class TermogeaZoneGridCard extends HTMLElement {
           );
           const zoneEnabled = this._toBoolean(stateObj?.attributes?.zone_enabled);
           const presenceDetected = this._toBoolean(stateObj?.attributes?.presence_detected);
-          const presenceActive = zoneEnabled && presenceDetected;
           const unavailable = !stateObj || stateObj.state === "unavailable";
           const toggleDisabled = unavailable || !zoneId;
           const toggleLabel = configuredEnabled ? "ON" : "OFF";
-          const policyClass = !configuredEnabled
-            ? "policy-disabled"
-            : presenceActive
-              ? "presence-active"
-              : zoneEnabled
-                ? "policy-enabled"
-                : "";
+          const zoneDemandActive = this._toBoolean(stateObj?.attributes?.heating_active) && configuredEnabled;
+          const demandIcon = activeSeason === "summer" ? "mdi:snowflake" : "mdi:fire";
           const presenceBadge = presenceDetected
             ? `<span class="zone-badge presence" title="Presenza rilevata"><ha-icon icon="mdi:account"></ha-icon></span>`
+            : "";
+          const operationBadge = zoneDemandActive
+            ? `<span class="zone-badge operation" title="${activeSeason === "summer" ? "Raffrescamento attivo" : "Riscaldamento attivo"}"><ha-icon icon="${demandIcon}"></ha-icon></span>`
             : "";
 
           const toggleControl = `<button class="action toggle ${configuredEnabled ? "active" : ""}" data-action="toggle" data-entity="${entry.entity}" data-zone-id="${zoneId}" data-zone-enabled="${configuredEnabled}" title="${configuredEnabled ? "Disabilita zona (temperatura sicurezza)" : "Abilita zona"}" ${toggleDisabled ? "disabled" : ""}>
@@ -395,10 +424,10 @@ class TermogeaZoneGridCard extends HTMLElement {
                 </button>`;
 
           return `
-            <div class="zone ${isOn ? "on" : "off"} ${policyClass} ${unavailable ? "unavailable" : ""}" data-action="more_info" data-entity="${entry.entity}" tabindex="0" role="button">
+            <div class="zone ${isOn ? "on" : "off"} ${unavailable ? "unavailable" : ""}" data-action="more_info" data-entity="${entry.entity}" tabindex="0" role="button">
               <div class="zone-head">
                 <div class="zone-name">${name}</div>
-                <div class="zone-badges">${presenceBadge}</div>
+                <div class="zone-badges">${operationBadge}${presenceBadge}</div>
               </div>
               <div class="zone-temp">${this._formatTemp(current)}<span class="unit">°C</span></div>
               <div class="zone-target">Target ${this._formatTemp(target)}°C${humidityPart}</div>
@@ -501,18 +530,6 @@ class TermogeaZoneGridCard extends HTMLElement {
           background: linear-gradient(165deg, #f4a000 0%, #f15a24 85%);
           transition: transform 120ms ease, filter 120ms ease;
         }
-        .zone.off {
-          filter: saturate(0.65) brightness(0.88);
-        }
-        .zone.policy-enabled {
-          background: linear-gradient(165deg, #ffb74d 0%, #f57c00 85%);
-        }
-        .zone.policy-disabled {
-          background: linear-gradient(165deg, #6b7280 0%, #374151 85%);
-        }
-        .zone.presence-active {
-          background: linear-gradient(165deg, #42c765 0%, #16a085 85%);
-        }
         .zone.unavailable {
           filter: grayscale(1);
           opacity: 0.7;
@@ -554,6 +571,9 @@ class TermogeaZoneGridCard extends HTMLElement {
           --mdc-icon-size: 18px;
         }
         .zone-badge.presence {
+          background: rgba(255, 255, 255, 0.24);
+        }
+        .zone-badge.operation {
           background: rgba(255, 255, 255, 0.24);
         }
         .zone-temp {
