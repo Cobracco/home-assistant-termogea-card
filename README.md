@@ -41,4 +41,7 @@ entities:
 ## Note
 
 - Se non specifichi `entities`, la card prende automaticamente tutte le entita `climate.termogea_*`.
+- Se non specifichi `entities`, la card rileva automaticamente le climate Termogea:
+  - prefisso `climate.termogea_*`
+  - oppure attributo `zone_id` presente (compatibile con entity_id rinominati, es. `climate.hobby`)
 - L'umidita viene mostrata se disponibile nell'attributo `current_humidity` della climate.

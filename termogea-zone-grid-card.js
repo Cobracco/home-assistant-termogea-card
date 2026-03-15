@@ -38,6 +38,17 @@ class TermogeaZoneGridCard extends HTMLElement {
     };
   }
 
+  _isTermogeaClimate(entityId, stateObj) {
+    if (!entityId.startsWith("climate.")) {
+      return false;
+    }
+    if (entityId.startsWith("climate.termogea_")) {
+      return true;
+    }
+    const attrs = stateObj?.attributes || {};
+    return typeof attrs.zone_id === "string" && attrs.zone_id.length > 0;
+  }
+
   _getEntities() {
     if (!this._hass || !this._hass.states || typeof this._hass.states !== "object") {
       return [];
@@ -55,10 +66,14 @@ class TermogeaZoneGridCard extends HTMLElement {
         .filter((entry) => typeof entry?.entity === "string");
     }
 
-    return Object.keys(this._hass.states)
-      .filter((entityId) => entityId.startsWith("climate.termogea_"))
-      .sort()
-      .map((entityId) => ({ entity: entityId }));
+    return Object.entries(this._hass.states)
+      .filter(([entityId, stateObj]) => this._isTermogeaClimate(entityId, stateObj))
+      .sort((a, b) => {
+        const aName = a[1]?.attributes?.friendly_name || a[0];
+        const bName = b[1]?.attributes?.friendly_name || b[0];
+        return String(aName).localeCompare(String(bName), undefined, { sensitivity: "base" });
+      })
+      .map(([entityId]) => ({ entity: entityId }));
   }
 
   _nameFor(entry, stateObj) {
