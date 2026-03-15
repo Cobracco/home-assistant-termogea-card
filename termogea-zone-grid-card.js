@@ -382,6 +382,12 @@ class TermogeaZoneGridCard extends HTMLElement {
             ? `<span class="zone-badge presence" title="Presenza rilevata"><ha-icon icon="mdi:account"></ha-icon></span>`
             : "";
 
+          const toggleControl = supportsOff
+            ? `<button class="action toggle ${isOn ? "active" : ""}" data-action="toggle" data-entity="${entry.entity}" ${toggleDisabled ? "disabled" : ""}>
+                  ${toggleLabel}
+                </button>`
+            : `<span class="action toggle status active" title="Zona in sola modalita riscaldamento">${toggleLabel}</span>`;
+
           return `
             <div class="zone ${isOn ? "on" : "off"} ${policyClass} ${unavailable ? "unavailable" : ""}" data-action="more_info" data-entity="${entry.entity}" tabindex="0" role="button">
               <div class="zone-head">
@@ -393,9 +399,7 @@ class TermogeaZoneGridCard extends HTMLElement {
               <div class="zone-actions">
                 <button class="action small" data-action="temp_down" data-entity="${entry.entity}" ${unavailable ? "disabled" : ""}>-</button>
                 <button class="action small" data-action="temp_up" data-entity="${entry.entity}" ${unavailable ? "disabled" : ""}>+</button>
-                <button class="action toggle ${isOn ? "active" : ""}" data-action="toggle" data-entity="${entry.entity}" ${toggleDisabled ? "disabled" : ""}>
-                  ${toggleLabel}
-                </button>
+                ${toggleControl}
               </div>
             </div>
           `;
@@ -594,6 +598,12 @@ class TermogeaZoneGridCard extends HTMLElement {
         }
         .action.toggle.active {
           color: #d9412e;
+        }
+        .action.toggle.status {
+          cursor: default;
+          margin-left: auto;
+          min-width: 58px;
+          text-align: center;
         }
         .action:disabled {
           cursor: default;
