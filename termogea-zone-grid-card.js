@@ -472,14 +472,9 @@ class TermogeaZoneGridCard extends HTMLElement {
           min-width: 0;
           width: 100%;
         }
-        @media (min-width: 680px) {
+        @media (min-width: 760px) {
           .grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-        }
-        @media (min-width: 1200px) {
-          .grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
         }
         .zone {
