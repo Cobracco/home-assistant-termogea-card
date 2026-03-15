@@ -48,3 +48,4 @@ entities:
 - Se nessuna climate Termogea viene rilevata, fallback automatico su tutte le `climate.*`.
 - L'umidita viene mostrata se disponibile nell'attributo `current_humidity` della climate.
 - Se `current_humidity` non e valorizzato sulla climate, la card prova fallback sul sensore umidita della stessa `zone_id`.
+- Se una zona non ha umidita disponibile, la card non mostra il campo `UR`.

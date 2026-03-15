@@ -164,6 +164,10 @@ class TermogeaZoneGridCard extends HTMLElement {
           const current = stateObj?.attributes?.current_temperature;
           const humidity = this._resolveHumidity(stateObj);
           const target = stateObj?.attributes?.temperature;
+          const humidityPart =
+            humidity === null
+              ? ""
+              : ` · UR ${this._formatTemp(humidity)}%`;
           const isOn = this._isOn(stateObj);
           const unavailable = !stateObj || stateObj.state === "unavailable";
 
@@ -171,7 +175,7 @@ class TermogeaZoneGridCard extends HTMLElement {
             <div class="zone ${isOn ? "on" : "off"} ${unavailable ? "unavailable" : ""}" data-action="more_info" data-entity="${entry.entity}" tabindex="0" role="button">
               <div class="zone-name">${name}</div>
               <div class="zone-temp">${this._formatTemp(current)}<span class="unit">°C</span></div>
-              <div class="zone-target">Target ${this._formatTemp(target)}°C · UR ${this._formatTemp(humidity)}%</div>
+              <div class="zone-target">Target ${this._formatTemp(target)}°C${humidityPart}</div>
               <div class="zone-actions">
                 <button class="action small" data-action="temp_down" data-entity="${entry.entity}" ${unavailable ? "disabled" : ""}>-</button>
                 <button class="action small" data-action="temp_up" data-entity="${entry.entity}" ${unavailable ? "disabled" : ""}>+</button>
