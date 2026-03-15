@@ -365,7 +365,10 @@ class TermogeaZoneGridCard extends HTMLElement {
             humidity === null
               ? ""
               : ` · UR ${this._formatTemp(humidity)}%`;
-          const isOn = this._isOn(stateObj);
+          const hasServerHeatingState = stateObj?.attributes?.heating_active !== undefined;
+          const isOn = hasServerHeatingState
+            ? this._toBoolean(stateObj?.attributes?.heating_active)
+            : this._isOn(stateObj);
           const zoneId = String(stateObj?.attributes?.zone_id || "").trim();
           const configuredEnabled = this._toBoolean(
             stateObj?.attributes?.enabled ?? stateObj?.attributes?.zone_enabled
