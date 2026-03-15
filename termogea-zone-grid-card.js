@@ -376,11 +376,13 @@ class TermogeaZoneGridCard extends HTMLElement {
           const unavailable = !stateObj || stateObj.state === "unavailable";
           const toggleDisabled = unavailable || !zoneId;
           const toggleLabel = configuredEnabled ? "ON" : "OFF";
-          const policyClass = presenceActive
-            ? "presence-active"
-            : zoneEnabled
-              ? "policy-enabled"
-              : "";
+          const policyClass = !configuredEnabled
+            ? "policy-disabled"
+            : presenceActive
+              ? "presence-active"
+              : zoneEnabled
+                ? "policy-enabled"
+                : "";
           const presenceBadge = presenceDetected
             ? `<span class="zone-badge presence" title="Presenza rilevata"><ha-icon icon="mdi:account"></ha-icon></span>`
             : "";
@@ -501,6 +503,9 @@ class TermogeaZoneGridCard extends HTMLElement {
         }
         .zone.policy-enabled {
           background: linear-gradient(165deg, #ffb74d 0%, #f57c00 85%);
+        }
+        .zone.policy-disabled {
+          background: linear-gradient(165deg, #6b7280 0%, #374151 85%);
         }
         .zone.presence-active {
           background: linear-gradient(165deg, #42c765 0%, #16a085 85%);
