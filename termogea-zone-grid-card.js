@@ -366,13 +366,16 @@ class TermogeaZoneGridCard extends HTMLElement {
               ? ""
               : ` · UR ${this._formatTemp(humidity)}%`;
           const isOn = this._isOn(stateObj);
-          const supportsOff = this._supportsHvacMode(stateObj, "off");
+          const zoneId = String(stateObj?.attributes?.zone_id || "").trim();
+          const configuredEnabled = this._toBoolean(
+            stateObj?.attributes?.enabled ?? stateObj?.attributes?.zone_enabled
+          );
           const zoneEnabled = this._toBoolean(stateObj?.attributes?.zone_enabled);
           const presenceDetected = this._toBoolean(stateObj?.attributes?.presence_detected);
           const presenceActive = zoneEnabled && presenceDetected;
           const unavailable = !stateObj || stateObj.state === "unavailable";
-          const toggleDisabled = unavailable || (isOn && !supportsOff);
-          const toggleLabel = supportsOff ? (isOn ? "ON" : "OFF") : "HEAT";
+          const toggleDisabled = unavailable || !zoneId;
+          const toggleLabel = configuredEnabled ? "ON" : "OFF";
           const policyClass = presenceActive
             ? "presence-active"
             : zoneEnabled
@@ -382,11 +385,9 @@ class TermogeaZoneGridCard extends HTMLElement {
             ? `<span class="zone-badge presence" title="Presenza rilevata"><ha-icon icon="mdi:account"></ha-icon></span>`
             : "";
 
-          const toggleControl = supportsOff
-            ? `<button class="action toggle ${isOn ? "active" : ""}" data-action="toggle" data-entity="${entry.entity}" ${toggleDisabled ? "disabled" : ""}>
+          const toggleControl = `<button class="action toggle ${configuredEnabled ? "active" : ""}" data-action="toggle" data-entity="${entry.entity}" data-zone-id="${zoneId}" data-zone-enabled="${configuredEnabled}" title="${configuredEnabled ? "Disabilita zona (temperatura sicurezza)" : "Abilita zona"}" ${toggleDisabled ? "disabled" : ""}>
                   ${toggleLabel}
-                </button>`
-            : `<span class="action toggle status active" title="Zona in sola modalita riscaldamento">${toggleLabel}</span>`;
+                </button>`;
 
           return `
             <div class="zone ${isOn ? "on" : "off"} ${policyClass} ${unavailable ? "unavailable" : ""}" data-action="more_info" data-entity="${entry.entity}" tabindex="0" role="button">
@@ -472,7 +473,7 @@ class TermogeaZoneGridCard extends HTMLElement {
         .grid {
           display: grid;
           gap: 12px;
-          grid-template-columns: minmax(0, 1fr);
+          grid-template-columns: minmax(0, 1fr) !important;
           min-width: 0;
           width: 100%;
         }
@@ -599,12 +600,6 @@ class TermogeaZoneGridCard extends HTMLElement {
         .action.toggle.active {
           color: #d9412e;
         }
-        .action.toggle.status {
-          cursor: default;
-          margin-left: auto;
-          min-width: 58px;
-          text-align: center;
-        }
         .action:disabled {
           cursor: default;
           opacity: 0.6;
@@ -676,35 +671,52 @@ class TermogeaZoneGridCard extends HTMLElement {
     }
 
     if (action === "toggle") {
-      const isOn = this._isOn(stateObj);
-      const supportsOff = this._supportsHvacMode(stateObj, "off");
-      const supportsHeat = this._supportsHvacMode(stateObj, "heat");
+      const fallbackHvacToggle = () => {
+        const isOn = this._isOn(stateObj);
+        const supportsOff = this._supportsHvacMode(stateObj, "off");
+        const supportsHeat = this._supportsHvacMode(stateObj, "heat");
+        const mode = isOn
+          ? "off"
+          : supportsHeat
+            ? "heat"
+            : this._hvacModes(stateObj).find((item) => item !== "off");
+        if (!mode || (mode === "off" && !supportsOff)) {
+          return Promise.resolve();
+        }
+        return Promise.resolve(
+          this._hass.callService("climate", "set_hvac_mode", {
+            entity_id: entityId,
+            hvac_mode: mode,
+          })
+        )
+          .then(() => this._schedulePostActionRefresh(this._entityIdsForCard()))
+          .catch((err) => console.error("Termogea HVAC toggle fallback failed", err));
+      };
 
-      if (isOn && !supportsOff) {
+      const zoneId = String(
+        actionElement.getAttribute("data-zone-id") || stateObj?.attributes?.zone_id || ""
+      ).trim();
+      const enabledFromButton = actionElement.getAttribute("data-zone-enabled");
+      const currentlyEnabled =
+        enabledFromButton === null
+          ? this._toBoolean(stateObj?.attributes?.enabled ?? stateObj?.attributes?.zone_enabled)
+          : this._toBoolean(enabledFromButton);
+
+      if (zoneId) {
+        Promise.resolve(
+          this._hass.callService("termogea", "set_zone_enabled", {
+            zone_id: zoneId,
+            enabled: !currentlyEnabled,
+          })
+        )
+          .then(() => this._schedulePostActionRefresh(this._entityIdsForCard()))
+          .catch((err) => {
+            console.error("Termogea zone enabled toggle failed", err);
+            return fallbackHvacToggle();
+          });
         return;
       }
-
-      let mode = "heat";
-      if (isOn) {
-        mode = "off";
-      } else if (supportsHeat) {
-        mode = "heat";
-      } else {
-        const firstSupported = this._hvacModes(stateObj).find((item) => item !== "off");
-        if (!firstSupported) {
-          return;
-        }
-        mode = firstSupported;
-      }
-
-      Promise.resolve(
-        this._hass.callService("climate", "set_hvac_mode", {
-          entity_id: entityId,
-          hvac_mode: mode,
-        })
-      )
-        .then(() => this._schedulePostActionRefresh(this._entityIdsForCard()))
-        .catch((err) => console.error("Termogea toggle failed", err));
+      fallbackHvacToggle();
       return;
     }
 
