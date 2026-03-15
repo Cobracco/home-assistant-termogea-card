@@ -26,6 +26,7 @@ Custom card Lovelace per Home Assistant dedicata a Termogea.
 type: custom:termogea-zone-grid-card
 title: Termogea
 title_icon: mdi:air-conditioner
+global_power_entity: switch.termogea_power
 ```
 
 Se hai problemi di cache risorse, usa la variante:
@@ -58,6 +59,7 @@ entities:
 ## Note
 
 - Se non specifichi `entities`, la card prende automaticamente tutte le entita `climate.termogea_*`.
+- `global_power_entity` (opzionale): switch master ON/OFF globale mostrato in alto sulla card.
 - Se non specifichi `entities`, la card rileva automaticamente le climate Termogea:
   - prefisso `climate.termogea_*`
   - oppure attributo `zone_id` presente (compatibile con entity_id rinominati, es. `climate.hobby`)

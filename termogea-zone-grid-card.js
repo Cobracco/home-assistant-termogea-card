@@ -99,6 +99,34 @@ class TermogeaZoneGridCard extends HTMLElement {
       .map(([entityId]) => ({ entity: entityId }));
   }
 
+  _resolveGlobalPowerEntity() {
+    if (!this._hass?.states) {
+      return null;
+    }
+    const configured = this._config.global_power_entity;
+    if (typeof configured === "string" && configured && this._hass.states[configured]) {
+      return configured;
+    }
+
+    const switches = Object.keys(this._hass.states).filter((entityId) =>
+      entityId.startsWith("switch.")
+    );
+    for (const entityId of switches) {
+      const stateObj = this._hass.states[entityId];
+      const friendly = String(stateObj?.attributes?.friendly_name || "").toLowerCase();
+      if (friendly.includes("termogea") && friendly.includes("power")) {
+        return entityId;
+      }
+    }
+    for (const entityId of switches) {
+      const lowered = entityId.toLowerCase();
+      if (lowered.includes("termogea") && lowered.includes("global_power")) {
+        return entityId;
+      }
+    }
+    return null;
+  }
+
   _nameFor(entry, stateObj) {
     if (entry.name) {
       return entry.name;
@@ -139,6 +167,7 @@ class TermogeaZoneGridCard extends HTMLElement {
 
   _entityIdsForCard() {
     const climateIds = this._getEntities().map((entry) => entry.entity);
+    const globalPowerEntity = this._resolveGlobalPowerEntity();
     const zoneIds = new Set();
     for (const entityId of climateIds) {
       const attrs = this._hass?.states?.[entityId]?.attributes || {};
@@ -162,7 +191,11 @@ class TermogeaZoneGridCard extends HTMLElement {
       }
     }
 
-    return Array.from(new Set([...climateIds, ...relatedSensorIds]));
+    const all = [...climateIds, ...relatedSensorIds];
+    if (globalPowerEntity) {
+      all.push(globalPowerEntity);
+    }
+    return Array.from(new Set(all));
   }
 
   _clearScheduledRefreshes() {
@@ -303,6 +336,17 @@ class TermogeaZoneGridCard extends HTMLElement {
 
       const title = this._config.title || "Termogea";
       const titleIcon = this._config.title_icon || "mdi:air-conditioner";
+      const globalPowerEntity = this._resolveGlobalPowerEntity();
+      const globalPowerState = globalPowerEntity ? this._hass.states[globalPowerEntity] : null;
+      const globalPowerOn = globalPowerState?.state === "on";
+      const globalPowerButton = globalPowerEntity
+        ? `<button class="global-power ${globalPowerOn ? "on" : "off"}"
+              data-action="global_power_toggle"
+              data-entity="${globalPowerEntity}"
+              title="${globalPowerOn ? "Spegni tutto" : "Accendi tutto"}">
+             ${globalPowerOn ? "Spegni tutto" : "Accendi tutto"}
+           </button>`
+        : "";
       const entities = this._getEntities();
       const cards = entities
         .map((entry) => {
@@ -370,7 +414,14 @@ class TermogeaZoneGridCard extends HTMLElement {
           align-items: center;
           display: flex;
           gap: 8px;
+          justify-content: space-between;
           margin-bottom: 14px;
+        }
+        .header-main {
+          align-items: center;
+          display: flex;
+          gap: 8px;
+          min-width: 0;
         }
         .header-icon {
           align-items: center;
@@ -388,6 +439,25 @@ class TermogeaZoneGridCard extends HTMLElement {
         .title {
           font-size: 20px;
           font-weight: 600;
+        }
+        .global-power {
+          background: #ffffff;
+          border: 0;
+          border-radius: 999px;
+          color: #24415a;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 700;
+          padding: 8px 12px;
+          white-space: nowrap;
+        }
+        .global-power.on {
+          background: #16a085;
+          color: #ffffff;
+        }
+        .global-power.off {
+          background: #e74c3c;
+          color: #ffffff;
         }
         .grid {
           display: grid;
@@ -517,8 +587,11 @@ class TermogeaZoneGridCard extends HTMLElement {
       </style>
       <ha-card>
         <div class="header">
-          <span class="header-icon"><ha-icon icon="${titleIcon}"></ha-icon></span>
-          <div class="title">${title}</div>
+          <div class="header-main">
+            <span class="header-icon"><ha-icon icon="${titleIcon}"></ha-icon></span>
+            <div class="title">${title}</div>
+          </div>
+          ${globalPowerButton}
         </div>
         <div class="grid">
           ${cards || "<div class='empty'>Nessuna zona Termogea trovata.</div>"}
@@ -594,6 +667,15 @@ class TermogeaZoneGridCard extends HTMLElement {
       this._hass.callService("climate", "set_hvac_mode", {
         entity_id: entityId,
         hvac_mode: mode,
+      });
+      this._schedulePostActionRefresh(this._entityIdsForCard());
+      return;
+    }
+
+    if (action === "global_power_toggle") {
+      const turnOn = stateObj.state !== "on";
+      this._hass.callService("switch", turnOn ? "turn_on" : "turn_off", {
+        entity_id: entityId,
       });
       this._schedulePostActionRefresh(this._entityIdsForCard());
       return;
