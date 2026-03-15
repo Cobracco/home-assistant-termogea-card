@@ -310,10 +310,16 @@ class TermogeaZoneGridCard extends HTMLElement {
 
   _resolveHumidity(stateObj) {
     const direct = this._toNumberOrNull(stateObj?.attributes?.current_humidity);
-    if (direct !== null) {
-      return direct;
+    const value = direct !== null
+      ? direct
+      : this._findZoneHumidityFromSensor(stateObj?.attributes?.zone_id);
+    if (value === null) {
+      return null;
     }
-    return this._findZoneHumidityFromSensor(stateObj?.attributes?.zone_id);
+    if (value < 0 || value > 100) {
+      return null;
+    }
+    return value;
   }
 
   _formatTemp(value) {
@@ -462,8 +468,19 @@ class TermogeaZoneGridCard extends HTMLElement {
         .grid {
           display: grid;
           gap: 12px;
+          grid-template-columns: minmax(0, 1fr);
           min-width: 0;
-          grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+          width: 100%;
+        }
+        @media (min-width: 680px) {
+          .grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+        @media (min-width: 1200px) {
+          .grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
         }
         .zone {
           border: none;
@@ -475,6 +492,8 @@ class TermogeaZoneGridCard extends HTMLElement {
           gap: 8px;
           min-height: 150px;
           padding: 14px;
+          overflow: hidden;
+          position: relative;
           text-align: left;
           width: 100%;
           max-width: 100%;
@@ -547,12 +566,19 @@ class TermogeaZoneGridCard extends HTMLElement {
         .zone-target {
           font-size: 15px;
           opacity: 0.95;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .zone-actions {
           align-items: center;
           display: flex;
           gap: 8px;
+          min-width: 0;
+          width: 100%;
           margin-top: auto;
+          flex-wrap: nowrap;
         }
         .action {
           border: 0;
@@ -572,6 +598,7 @@ class TermogeaZoneGridCard extends HTMLElement {
           color: #666;
           margin-left: auto;
           min-width: 58px;
+          flex-shrink: 0;
         }
         .action.toggle.active {
           color: #d9412e;
