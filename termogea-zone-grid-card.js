@@ -103,6 +103,17 @@ class TermogeaZoneGridCard extends HTMLElement {
     return Number.isFinite(num) ? num : null;
   }
 
+  _toBoolean(value) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (value === null || value === undefined) {
+      return false;
+    }
+    const normalized = String(value).trim().toLowerCase();
+    return ["1", "true", "on", "yes", "home", "detected", "occupied"].includes(normalized);
+  }
+
   _findZoneHumidityFromSensor(zoneId) {
     if (!zoneId || !this._hass?.states) {
       return null;
@@ -169,10 +180,18 @@ class TermogeaZoneGridCard extends HTMLElement {
               ? ""
               : ` · UR ${this._formatTemp(humidity)}%`;
           const isOn = this._isOn(stateObj);
+          const zoneEnabled = this._toBoolean(stateObj?.attributes?.zone_enabled);
+          const presenceDetected = this._toBoolean(stateObj?.attributes?.presence_detected);
+          const presenceActive = zoneEnabled && presenceDetected;
           const unavailable = !stateObj || stateObj.state === "unavailable";
+          const policyClass = presenceActive
+            ? "presence-active"
+            : zoneEnabled
+              ? "policy-enabled"
+              : "";
 
           return `
-            <div class="zone ${isOn ? "on" : "off"} ${unavailable ? "unavailable" : ""}" data-action="more_info" data-entity="${entry.entity}" tabindex="0" role="button">
+            <div class="zone ${isOn ? "on" : "off"} ${policyClass} ${unavailable ? "unavailable" : ""}" data-action="more_info" data-entity="${entry.entity}" tabindex="0" role="button">
               <div class="zone-name">${name}</div>
               <div class="zone-temp">${this._formatTemp(current)}<span class="unit">°C</span></div>
               <div class="zone-target">Target ${this._formatTemp(target)}°C${humidityPart}</div>
@@ -190,7 +209,16 @@ class TermogeaZoneGridCard extends HTMLElement {
 
       this.shadowRoot.innerHTML = `
       <style>
+        :host {
+          display: block;
+        }
+        *,
+        *::before,
+        *::after {
+          box-sizing: border-box;
+        }
         ha-card {
+          overflow: hidden;
           padding: 16px;
         }
         .header {
@@ -219,6 +247,7 @@ class TermogeaZoneGridCard extends HTMLElement {
         .grid {
           display: grid;
           gap: 12px;
+          min-width: 0;
           grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
         }
         .zone {
@@ -233,11 +262,19 @@ class TermogeaZoneGridCard extends HTMLElement {
           padding: 14px;
           text-align: left;
           width: 100%;
+          max-width: 100%;
+          min-width: 0;
           background: linear-gradient(165deg, #f4a000 0%, #f15a24 85%);
           transition: transform 120ms ease, filter 120ms ease;
         }
         .zone.off {
           filter: saturate(0.65) brightness(0.88);
+        }
+        .zone.policy-enabled {
+          background: linear-gradient(165deg, #ffb74d 0%, #f57c00 85%);
+        }
+        .zone.presence-active {
+          background: linear-gradient(165deg, #42c765 0%, #16a085 85%);
         }
         .zone.unavailable {
           filter: grayscale(1);
@@ -331,11 +368,15 @@ class TermogeaZoneGridCard extends HTMLElement {
   }
 
   _onClick(event) {
-    const actionElement = event.target.closest("[data-action]");
+    const composedTarget = event.composedPath?.()[0] ?? event.target;
+    const targetElement =
+      composedTarget instanceof Element ? composedTarget : composedTarget?.parentElement;
+    const actionElement = targetElement?.closest?.("[data-action]");
     if (!actionElement || !this._hass) {
       return;
     }
     event.stopPropagation();
+    event.preventDefault();
 
     const entityId = actionElement.getAttribute("data-entity");
     const action = actionElement.getAttribute("data-action");
@@ -385,18 +426,38 @@ class TermogeaZoneGridCard extends HTMLElement {
   }
 }
 
-if (!customElements.get("termogea-zone-grid-card")) {
-  customElements.define("termogea-zone-grid-card", TermogeaZoneGridCard);
-}
+const TERMOGEA_CARD_TYPE = "termogea-zone-grid-card";
+const TERMOGEA_CARD_TYPE_V2 = "termogea-zone-grid-card-v2";
+
+const defineCard = (tag) => {
+  if (!customElements.get(tag)) {
+    customElements.define(tag, class extends TermogeaZoneGridCard {});
+  }
+};
+
+defineCard(TERMOGEA_CARD_TYPE);
+defineCard(TERMOGEA_CARD_TYPE_V2);
 
 window.customCards = window.customCards || [];
-const TERMOGEA_CARD_TYPE = "termogea-zone-grid-card";
-if (!window.customCards.some((card) => card && (card.type === TERMOGEA_CARD_TYPE || card.type === `custom:${TERMOGEA_CARD_TYPE}`))) {
-  window.customCards.push({
-    type: TERMOGEA_CARD_TYPE,
-    name: "Termogea Zone Grid",
-    description: "Griglia rapida delle zone Termogea con toggle, setpoint e umidita.",
-    preview: true,
-    documentationURL: "https://github.com/Cobracco/home-assistant-termogea-card",
-  });
-}
+const registerCardMetadata = (type, name, description) => {
+  if (!window.customCards.some((card) => card && (card.type === type || card.type === `custom:${type}`))) {
+    window.customCards.push({
+      type,
+      name,
+      description,
+      preview: true,
+      documentationURL: "https://github.com/Cobracco/home-assistant-termogea-card",
+    });
+  }
+};
+
+registerCardMetadata(
+  TERMOGEA_CARD_TYPE,
+  "Termogea Zone Grid",
+  "Griglia rapida delle zone Termogea con toggle, setpoint e umidita."
+);
+registerCardMetadata(
+  TERMOGEA_CARD_TYPE_V2,
+  "Termogea Zone Grid v2",
+  "Versione aggiornata per bypass cache risorse e fix layout."
+);

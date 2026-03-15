@@ -28,6 +28,14 @@ title: Termogea
 title_icon: mdi:air-conditioner
 ```
 
+Se hai problemi di cache risorse, usa la variante:
+
+```yaml
+type: custom:termogea-zone-grid-card-v2
+title: Termogea
+title_icon: mdi:air-conditioner
+```
+
 Con entita esplicite:
 
 ```yaml
@@ -49,3 +57,6 @@ entities:
 - L'umidita viene mostrata se disponibile nell'attributo `current_humidity` della climate.
 - Se `current_humidity` non e valorizzato sulla climate, la card prova fallback sul sensore umidita della stessa `zone_id`.
 - Se una zona non ha umidita disponibile, la card non mostra il campo `UR`.
+- Colore tile:
+  - arancione base
+  - verde quando la policy zona e abilitata e `presence_detected` e attivo
