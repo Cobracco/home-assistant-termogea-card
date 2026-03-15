@@ -46,3 +46,4 @@ entities:
   - prefisso `climate.termogea_*`
   - oppure attributo `zone_id` presente (compatibile con entity_id rinominati, es. `climate.hobby`)
 - L'umidita viene mostrata se disponibile nell'attributo `current_humidity` della climate.
+- Se `current_humidity` non e valorizzato sulla climate, la card prova fallback sul sensore umidita della stessa `zone_id`.

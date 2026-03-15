@@ -91,6 +91,44 @@ class TermogeaZoneGridCard extends HTMLElement {
     return mode && mode !== "off" && mode !== "unavailable" && mode !== "unknown";
   }
 
+  _toNumberOrNull(value) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  }
+
+  _findZoneHumidityFromSensor(zoneId) {
+    if (!zoneId || !this._hass?.states) {
+      return null;
+    }
+    for (const [entityId, stateObj] of Object.entries(this._hass.states)) {
+      if (!entityId.startsWith("sensor.")) {
+        continue;
+      }
+      const attrs = stateObj?.attributes || {};
+      const sameZone = String(attrs.zone_id || "").toLowerCase() === String(zoneId).toLowerCase();
+      if (!sameZone) {
+        continue;
+      }
+      const deviceClass = String(attrs.device_class || "").toLowerCase();
+      if (deviceClass !== "humidity") {
+        continue;
+      }
+      if (stateObj.state === "unknown" || stateObj.state === "unavailable") {
+        continue;
+      }
+      return this._toNumberOrNull(stateObj.state);
+    }
+    return null;
+  }
+
+  _resolveHumidity(stateObj) {
+    const direct = this._toNumberOrNull(stateObj?.attributes?.current_humidity);
+    if (direct !== null) {
+      return direct;
+    }
+    return this._findZoneHumidityFromSensor(stateObj?.attributes?.zone_id);
+  }
+
   _formatTemp(value) {
     if (value === undefined || value === null || Number.isNaN(Number(value))) {
       return "--";
@@ -117,7 +155,7 @@ class TermogeaZoneGridCard extends HTMLElement {
           const stateObj = this._hass.states[entry.entity];
           const name = this._nameFor(entry, stateObj);
           const current = stateObj?.attributes?.current_temperature;
-          const humidity = stateObj?.attributes?.current_humidity;
+          const humidity = this._resolveHumidity(stateObj);
           const target = stateObj?.attributes?.temperature;
           const isOn = this._isOn(stateObj);
           const unavailable = !stateObj || stateObj.state === "unavailable";
