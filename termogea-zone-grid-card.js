@@ -66,8 +66,15 @@ class TermogeaZoneGridCard extends HTMLElement {
         .filter((entry) => typeof entry?.entity === "string");
     }
 
-    return Object.entries(this._hass.states)
-      .filter(([entityId, stateObj]) => this._isTermogeaClimate(entityId, stateObj))
+    const allClimate = Object.entries(this._hass.states).filter(([entityId]) =>
+      entityId.startsWith("climate.")
+    );
+    const termogeaClimate = allClimate.filter(([entityId, stateObj]) =>
+      this._isTermogeaClimate(entityId, stateObj)
+    );
+    const selected = termogeaClimate.length > 0 ? termogeaClimate : allClimate;
+
+    return selected
       .sort((a, b) => {
         const aName = a[1]?.attributes?.friendly_name || a[0];
         const bName = b[1]?.attributes?.friendly_name || b[0];
