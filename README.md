@@ -25,6 +25,7 @@ Custom card Lovelace per Home Assistant dedicata a Termogea.
 ```yaml
 type: custom:termogea-zone-grid-card
 title: Termogea
+title_icon: mdi:air-conditioner
 ```
 
 Con entita esplicite:

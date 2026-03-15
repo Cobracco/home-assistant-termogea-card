@@ -110,6 +110,7 @@ class TermogeaZoneGridCard extends HTMLElement {
       }
 
       const title = this._config.title || "Termogea";
+      const titleIcon = this._config.title_icon || "mdi:air-conditioner";
       const entities = this._getEntities();
       const cards = entities
         .map((entry) => {
@@ -143,10 +144,28 @@ class TermogeaZoneGridCard extends HTMLElement {
         ha-card {
           padding: 16px;
         }
+        .header {
+          align-items: center;
+          display: flex;
+          gap: 8px;
+          margin-bottom: 14px;
+        }
+        .header-icon {
+          align-items: center;
+          background: linear-gradient(165deg, #f4a000 0%, #f15a24 85%);
+          border-radius: 50%;
+          color: white;
+          display: inline-flex;
+          height: 28px;
+          justify-content: center;
+          width: 28px;
+        }
+        .header-icon ha-icon {
+          --mdc-icon-size: 18px;
+        }
         .title {
           font-size: 20px;
           font-weight: 600;
-          margin-bottom: 14px;
         }
         .grid {
           display: grid;
@@ -236,7 +255,10 @@ class TermogeaZoneGridCard extends HTMLElement {
         }
       </style>
       <ha-card>
-        <div class="title">${title}</div>
+        <div class="header">
+          <span class="header-icon"><ha-icon icon="${titleIcon}"></ha-icon></span>
+          <div class="title">${title}</div>
+        </div>
         <div class="grid">
           ${cards || "<div class='empty'>Nessuna zona Termogea trovata.</div>"}
         </div>
@@ -325,7 +347,7 @@ if (!window.customCards.some((card) => card && (card.type === TERMOGEA_CARD_TYPE
     type: TERMOGEA_CARD_TYPE,
     name: "Termogea Zone Grid",
     description: "Griglia rapida delle zone Termogea con toggle, setpoint e umidita.",
-    preview: false,
+    preview: true,
     documentationURL: "https://github.com/Cobracco/home-assistant-termogea-card",
   });
 }
