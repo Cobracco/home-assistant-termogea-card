@@ -794,6 +794,8 @@ const TERMOGEA_CARD_TYPE = "termogea-zone-grid-card";
 const TERMOGEA_CARD_TYPE_V2 = "termogea-zone-grid-card-v2";
 const TERMOGEA_CARD_TYPE_V3 = "termogea-zone-grid-card-v3";
 
+// Definisce tutti e tre gli alias per retrocompatibilita con dashboard esistenti.
+// Solo il tipo principale viene registrato nel picker della UI.
 const defineCard = (tag) => {
   if (!customElements.get(tag)) {
     customElements.define(tag, class extends TermogeaZoneGridCard {});
@@ -805,30 +807,12 @@ defineCard(TERMOGEA_CARD_TYPE_V2);
 defineCard(TERMOGEA_CARD_TYPE_V3);
 
 window.customCards = window.customCards || [];
-const registerCardMetadata = (type, name, description) => {
-  if (!window.customCards.some((card) => card && (card.type === type || card.type === `custom:${type}`))) {
-    window.customCards.push({
-      type,
-      name,
-      description,
-      preview: true,
-      documentationURL: "https://github.com/Cobracco/home-assistant-termogea-card",
-    });
-  }
-};
-
-registerCardMetadata(
-  TERMOGEA_CARD_TYPE,
-  "Termogea Zone Grid",
-  "Griglia rapida delle zone Termogea con toggle, setpoint e umidita."
-);
-registerCardMetadata(
-  TERMOGEA_CARD_TYPE_V2,
-  "Termogea Zone Grid v2",
-  "Versione aggiornata per bypass cache risorse e fix layout."
-);
-registerCardMetadata(
-  TERMOGEA_CARD_TYPE_V3,
-  "Termogea Zone Grid v3",
-  "Versione aggiornata per bypass cache aggressiva e risorse duplicate."
-);
+if (!window.customCards.some((card) => card && (card.type === TERMOGEA_CARD_TYPE || card.type === `custom:${TERMOGEA_CARD_TYPE}`))) {
+  window.customCards.push({
+    type: TERMOGEA_CARD_TYPE,
+    name: "Termogea Zone Grid",
+    description: "Griglia rapida delle zone Termogea con toggle, setpoint e umidita.",
+    preview: true,
+    documentationURL: "https://github.com/Cobracco/home-assistant-termogea-card",
+  });
+}
