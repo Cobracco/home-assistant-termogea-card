@@ -424,7 +424,7 @@ class TermogeaZoneGridCard extends HTMLElement {
                 </button>`;
 
           return `
-            <div class="zone ${isOn ? "on" : "off"} ${configuredEnabled ? "" : "zone-disabled"} ${unavailable ? "unavailable" : ""}" data-action="more_info" data-entity="${entry.entity}" tabindex="0" role="button">
+            <div class="zone ${isOn ? "on" : "off"} ${configuredEnabled ? "" : "zone-disabled"} ${activeSeason === "summer" ? "season-summer" : ""} ${unavailable ? "unavailable" : ""}" data-action="more_info" data-entity="${entry.entity}" tabindex="0" role="button">
               <div class="zone-head">
                 <div class="zone-name">${name}</div>
                 <div class="zone-badges">${operationBadge}${presenceBadge}</div>
@@ -529,6 +529,9 @@ class TermogeaZoneGridCard extends HTMLElement {
           min-width: 0;
           background: linear-gradient(165deg, #f4a000 0%, #f15a24 85%);
           transition: transform 120ms ease, filter 120ms ease;
+        }
+        .zone.season-summer {
+          background: linear-gradient(165deg, #5bb8e8 0%, #2b7fc0 85%);
         }
         .zone.zone-disabled {
           background: linear-gradient(165deg, #6b7280 0%, #374151 85%);
