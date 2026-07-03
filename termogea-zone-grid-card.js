@@ -173,6 +173,28 @@ class TermogeaZoneGridCard extends HTMLElement {
     return mode && mode !== "off" && mode !== "unavailable" && mode !== "unknown";
   }
 
+  _isZoneDemanding(stateObj, activeSeason) {
+    // "Attiva" = la zona sta effettivamente condizionando, non solo accesa.
+    // 1) se il server segnala la domanda attiva (heating_active), fidati.
+    if (this._toBoolean(stateObj?.attributes?.heating_active)) {
+      return true;
+    }
+    // 2) fallback robusto indipendente dallo StatusBits della centralina
+    //    (che in estate non riflette la domanda di raffrescamento): confronta
+    //    temperatura corrente e target in base alla stagione.
+    //    Estate: attiva se sopra il target. Inverno: attiva se sotto il target.
+    const at = stateObj?.attributes || {};
+    const current = Number(at.current_temperature);
+    const target = Number(at.temperature);
+    if (!Number.isFinite(current) || !Number.isFinite(target)) {
+      return false;
+    }
+    const DELTA = 0.1;
+    return activeSeason === "summer"
+      ? current > target + DELTA
+      : current < target - DELTA;
+  }
+
   _hvacModes(stateObj) {
     const raw = stateObj?.attributes?.hvac_modes;
     if (!Array.isArray(raw)) {
@@ -410,7 +432,7 @@ class TermogeaZoneGridCard extends HTMLElement {
           const unavailable = !stateObj || stateObj.state === "unavailable";
           const toggleDisabled = unavailable || !zoneId;
           const toggleLabel = configuredEnabled ? "ON" : "OFF";
-          const zoneDemandActive = this._toBoolean(stateObj?.attributes?.heating_active) && configuredEnabled;
+          const zoneDemandActive = zoneEnabled && this._isZoneDemanding(stateObj, activeSeason);
           const demandIcon = activeSeason === "summer" ? "mdi:snowflake" : "mdi:fire";
           const presenceBadge = presenceDetected
             ? `<span class="zone-badge presence" title="Presenza rilevata"><ha-icon icon="mdi:account"></ha-icon></span>`
